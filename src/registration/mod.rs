@@ -1,4 +1,4 @@
-use crate::helpers::{DeserializeMapField, Timestamp};
+use crate::helpers::{DeserializeMapField, JsonTimestamp};
 use crate::http_utils::{auth_bearer, check_content_type, MIME_TYPE_JSON};
 use crate::types::localized::split_language_tag_key;
 use crate::types::{
@@ -14,10 +14,10 @@ use crate::{
     StandardErrorResponse, SyncHttpClient,
 };
 
-use chrono::{DateTime, Utc};
 use http::header::{HeaderValue, ACCEPT, CONTENT_TYPE};
 use http::method::Method;
 use http::status::StatusCode;
+use jiff::Timestamp;
 use serde::de::{DeserializeOwned, Deserializer, MapAccess, Visitor};
 use serde::ser::SerializeMap;
 use serde::{Deserialize, Serialize, Serializer};
@@ -754,10 +754,10 @@ where
     client_secret: Option<ClientSecret>,
     registration_access_token: Option<RegistrationAccessToken>,
     registration_client_uri: Option<ClientConfigUrl>,
-    #[serde_as(as = "Option<Timestamp>")]
-    client_id_issued_at: Option<DateTime<Utc>>,
-    #[serde_as(as = "Option<Timestamp>")]
-    client_secret_expires_at: Option<DateTime<Utc>>,
+    #[serde_as(as = "Option<JsonTimestamp>")]
+    client_id_issued_at: Option<Timestamp>,
+    #[serde_as(as = "Option<JsonTimestamp>")]
+    client_secret_expires_at: Option<Timestamp>,
     #[serde(bound = "AC: AdditionalClientMetadata", flatten)]
     client_metadata: ClientMetadata<AC, AT, CA, G, JE, JK, K, RT, S>,
 
@@ -824,8 +824,8 @@ where
             set_registration_access_token
               -> registration_access_token[Option<RegistrationAccessToken>],
             set_registration_client_uri -> registration_client_uri[Option<ClientConfigUrl>],
-            set_client_id_issued_at -> client_id_issued_at[Option<DateTime<Utc>>],
-            set_client_secret_expires_at -> client_secret_expires_at[Option<DateTime<Utc>>],
+            set_client_id_issued_at -> client_id_issued_at[Option<Timestamp>],
+            set_client_secret_expires_at -> client_secret_expires_at[Option<Timestamp>],
         }
     ];
 

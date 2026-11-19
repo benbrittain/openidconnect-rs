@@ -4,7 +4,7 @@ use crate::core::{
     CoreJwsSigningAlgorithm, CoreRsaPrivateSigningKey, CoreUserInfoClaims,
     CoreUserInfoJsonWebToken, CoreUserInfoVerifier,
 };
-use crate::helpers::{Base64UrlEncodedBytes, Timestamp};
+use crate::helpers::{Base64UrlEncodedBytes, JsonTimestamp};
 use crate::jwt::tests::{TEST_RSA_PRIV_KEY, TEST_RSA_PUB_KEY};
 use crate::jwt::{
     JsonWebToken, JsonWebTokenHeader, JsonWebTokenJsonPayloadSerde, JsonWebTokenType,
@@ -16,7 +16,7 @@ use crate::{
     SignatureVerificationError, StandardClaims, SubjectIdentifier, UserInfoError,
 };
 
-use chrono::{TimeZone, Utc};
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
@@ -814,8 +814,8 @@ fn test_id_token_verified_claims() {
             CoreJsonWebKeySet::new(vec![rsa_key.clone()]),
         )
         .set_time_fn(|| {
-            Timestamp::Seconds(mock_current_time.load(Ordering::Relaxed).into())
-                .to_utc()
+            JsonTimestamp::Seconds(mock_current_time.load(Ordering::Relaxed).into())
+                .to_timestamp()
                 .unwrap()
         })
         .set_issue_time_verifier_fn(|_| {
@@ -828,8 +828,8 @@ fn test_id_token_verified_claims() {
 
         let insecure_verifier = CoreIdTokenVerifier::new_insecure_without_verification()
             .set_time_fn(|| {
-                Timestamp::Seconds(mock_current_time.load(Ordering::Relaxed).into())
-                    .to_utc()
+                JsonTimestamp::Seconds(mock_current_time.load(Ordering::Relaxed).into())
+                    .to_timestamp()
                     .unwrap()
             });
 
@@ -989,7 +989,9 @@ fn test_id_token_verified_claims() {
             .set_auth_time_verifier_fn(|auth_time| {
                 assert_eq!(
                     auth_time.unwrap(),
-                    Timestamp::Seconds(1544928548.into()).to_utc().unwrap(),
+                    JsonTimestamp::Seconds(1544928548.into())
+                        .to_timestamp()
+                        .unwrap(),
                 );
                 Err("Invalid auth_time claim".to_string())
             })
@@ -1052,8 +1054,8 @@ fn test_id_token_verified_claims() {
             CoreJsonWebKeySet::new(vec![rsa_key.clone()]),
         )
         .set_time_fn(|| {
-            Timestamp::Seconds(mock_current_time.load(Ordering::Relaxed).into())
-                .to_utc()
+            JsonTimestamp::Seconds(mock_current_time.load(Ordering::Relaxed).into())
+                .to_timestamp()
                 .unwrap()
         });
         match private_client_verifier.verified_claims(&test_jwt_hs256, &valid_nonce) {
@@ -1089,8 +1091,8 @@ fn test_id_token_verified_claims() {
             )
             .allow_any_alg()
             .set_time_fn(|| {
-                Timestamp::Seconds(mock_current_time.load(Ordering::Relaxed).into())
-                    .to_utc()
+                JsonTimestamp::Seconds(mock_current_time.load(Ordering::Relaxed).into())
+                    .to_timestamp()
                     .unwrap()
             });
         match private_client_verifier_with_other_secret
@@ -1120,21 +1122,15 @@ fn test_new_id_token() {
         CoreIdTokenClaims::new(
             issuer.clone(),
             vec![Audience::new((*client_id).clone())],
-            Utc.timestamp_opt(1544932149, 0)
-                .single()
-                .expect("valid timestamp"),
-            Utc.timestamp_opt(1544928549, 0)
-                .single()
-                .expect("valid timestamp"),
+            Timestamp::from_second(1544932149).expect("valid timestamp"),
+            Timestamp::from_second(1544928549).expect("valid timestamp"),
             StandardClaims::new(SubjectIdentifier::new("subject".to_string())),
             Default::default(),
         )
         .set_nonce(Some(nonce.clone()))
         .set_auth_context_ref(Some(AuthenticationContextClass::new("the_acr".to_string())))
         .set_auth_time(Some(
-            Utc.timestamp_opt(1544928548, 0)
-                .single()
-                .expect("valid timestamp"),
+            Timestamp::from_second(1544928548).expect("valid timestamp"),
         )),
         &rsa_priv_key,
         CoreJwsSigningAlgorithm::RsaSsaPkcs1V15Sha256,
@@ -1162,8 +1158,8 @@ fn test_new_id_token() {
 
     let mock_current_time = AtomicUsize::new(1544932148);
     let time_fn = || {
-        Timestamp::Seconds(mock_current_time.load(Ordering::Relaxed).into())
-            .to_utc()
+        JsonTimestamp::Seconds(mock_current_time.load(Ordering::Relaxed).into())
+            .to_timestamp()
             .unwrap()
     };
     let verifier = CoreIdTokenVerifier::new_public_client(
@@ -1335,11 +1331,7 @@ fn test_new_user_info_claims() {
             phone_number: None,
             phone_number_verified: None,
             address: None,
-            updated_at: Some(
-                Utc.timestamp_opt(1544928548, 0)
-                    .single()
-                    .expect("valid timestamp"),
-            ),
+            updated_at: Some(Timestamp::from_second(1544928548).expect("valid timestamp")),
         },
         Default::default(),
     );

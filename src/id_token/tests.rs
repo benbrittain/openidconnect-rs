@@ -13,7 +13,7 @@ use crate::{
     StreetAddress, SubjectIdentifier,
 };
 
-use chrono::{TimeZone, Utc};
+use jiff::Timestamp;
 use oauth2::TokenResponse;
 use pretty_assertions::assert_eq;
 use serde::{Deserialize, Serialize};
@@ -47,15 +47,11 @@ fn test_id_token() {
     );
     assert_eq!(
         claims.expiration(),
-        Utc.timestamp_opt(1311281970, 0)
-            .single()
-            .expect("valid timestamp")
+        Timestamp::from_second(1311281970).expect("valid timestamp")
     );
     assert_eq!(
         claims.issue_time(),
-        Utc.timestamp_opt(1311280970, 0)
-            .single()
-            .expect("valid timestamp")
+        Timestamp::from_second(1311280970).expect("valid timestamp")
     );
     assert_eq!(
         *claims.subject(),
@@ -98,15 +94,11 @@ fn test_oauth2_response() {
     );
     assert_eq!(
         claims.expiration(),
-        Utc.timestamp_opt(1311281970, 0)
-            .single()
-            .expect("valid timestamp")
+        Timestamp::from_second(1311281970).expect("valid timestamp")
     );
     assert_eq!(
         claims.issue_time(),
-        Utc.timestamp_opt(1311280970, 0)
-            .single()
-            .expect("valid timestamp")
+        Timestamp::from_second(1311280970).expect("valid timestamp")
     );
     assert_eq!(
         *claims.subject(),
@@ -124,12 +116,8 @@ fn test_minimal_claims_serde() {
     let new_claims = CoreIdTokenClaims::new(
         IssuerUrl::new("https://server.example.com".to_string()).unwrap(),
         vec![Audience::new("s6BhdRkqt3".to_string())],
-        Utc.timestamp_opt(1311281970, 0)
-            .single()
-            .expect("valid timestamp"),
-        Utc.timestamp_opt(1311280970, 0)
-            .single()
-            .expect("valid timestamp"),
+        Timestamp::from_second(1311281970).expect("valid timestamp"),
+        Timestamp::from_second(1311280970).expect("valid timestamp"),
         StandardClaims::new(SubjectIdentifier::new("24400320".to_string())),
         EmptyAdditionalClaims {},
     );
@@ -253,12 +241,8 @@ fn test_complete_claims_serde() {
     let new_claims = CoreIdTokenClaims::new(
         IssuerUrl::new("https://server.example.com".to_string()).unwrap(),
         vec![Audience::new("s6BhdRkqt3".to_string())],
-        Utc.timestamp_opt(1311281970, 0)
-            .single()
-            .expect("valid timestamp"),
-        Utc.timestamp_opt(1311280970, 0)
-            .single()
-            .expect("valid timestamp"),
+        Timestamp::from_second(1311281970).expect("valid timestamp"),
+        Timestamp::from_second(1311280970).expect("valid timestamp"),
         StandardClaims {
             sub: SubjectIdentifier::new("24400320".to_string()),
             name: Some(
@@ -382,18 +366,12 @@ fn test_complete_claims_serde() {
                 postal_code: Some(AddressPostalCode::new("90210".to_string())),
                 country: Some(AddressCountry::new("US".to_string())),
             }),
-            updated_at: Some(
-                Utc.timestamp_opt(1311283970, 0)
-                    .single()
-                    .expect("valid timestamp"),
-            ),
+            updated_at: Some(Timestamp::from_second(1311283970).expect("valid timestamp")),
         },
         EmptyAdditionalClaims {},
     )
     .set_auth_time(Some(
-        Utc.timestamp_opt(1311282970, 0)
-            .single()
-            .expect("valid timestamp"),
+        Timestamp::from_second(1311282970).expect("valid timestamp"),
     ))
     .set_nonce(Some(Nonce::new("Zm9vYmFy".to_string())))
     .set_auth_context_ref(Some(AuthenticationContextClass::new(
@@ -482,11 +460,7 @@ fn test_accept_rfc3339_timestamp() {
     .expect("failed to deserialize");
     assert_eq!(
         claims.updated_at(),
-        Some(
-            Utc.timestamp_opt(1640139037, 0)
-                .single()
-                .expect("valid timestamp")
-        )
+        Some(Timestamp::from_second(1640139037).expect("valid timestamp"))
     );
 }
 

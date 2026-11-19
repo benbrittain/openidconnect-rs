@@ -441,9 +441,9 @@ macro_rules! serialize_fields {
             $map.serialize_entry(stringify!($field), &$field.as_secs())?;
         }
     };
-    (@case $self:ident $map:ident Option(DateTime(Seconds($field:ident)))) => {
+    (@case $self:ident $map:ident Option(Timestamp(Seconds($field:ident)))) => {
         if let Some(ref $field) = $self.$field {
-            $map.serialize_entry(stringify!($field), &crate::helpers::Timestamp::from_utc(&$field))?;
+            $map.serialize_entry(stringify!($field), &crate::helpers::JsonTimestamp::from_timestamp(&$field))?;
         }
     };
     (@case $self:ident $map:ident Option($field:ident)) => {
@@ -497,15 +497,15 @@ macro_rules! field_getters {
             $($body)+
         }
     };
-    (@case [$doc:expr] $vis:vis $self:ident [$zero:expr] $field:ident Option < DateTime < Utc >>) => {
+    (@case [$doc:expr] $vis:vis $self:ident [$zero:expr] $field:ident Option < Timestamp >) => {
         #[doc = $doc]
-        $vis fn $field(&$self) -> Option<DateTime<Utc>> {
+        $vis fn $field(&$self) -> Option<Timestamp> {
             $zero.$field
         }
     };
-    (@case [$doc:expr] $vis:vis $self:ident [$zero:expr] $field:ident Option < DateTime < Utc >> { $($body:tt)+ }) => {
+    (@case [$doc:expr] $vis:vis $self:ident [$zero:expr] $field:ident Option < Timestamp > { $($body:tt)+ }) => {
         #[doc = $doc]
-        $vis fn $field(&$self) -> Option<DateTime<Utc>> {
+        $vis fn $field(&$self) -> Option<Timestamp> {
             $($body)+
         }
     };
@@ -521,9 +521,9 @@ macro_rules! field_getters {
             $($body)+
         }
     };
-    (@case [$doc:expr] $vis:vis $self:ident [$zero:expr] $field:ident DateTime < Utc >) => {
+    (@case [$doc:expr] $vis:vis $self:ident [$zero:expr] $field:ident Timestamp) => {
         #[doc = $doc]
-        $vis fn $field(&$self) -> DateTime<Utc> {
+        $vis fn $field(&$self) -> Timestamp {
             $zero.$field
         }
     };
@@ -551,15 +551,15 @@ macro_rules! field_getters {
             $($body)+
         }
     };
-    (@case [$doc:expr] $self:ident [$zero:expr] $field:ident() Option < DateTime < Utc >>) => {
+    (@case [$doc:expr] $self:ident [$zero:expr] $field:ident() Option < Timestamp >) => {
         #[doc = $doc]
-        fn $field(&$self) -> Option<DateTime<Utc>> {
+        fn $field(&$self) -> Option<Timestamp> {
             $zero.$field()
         }
     };
-    (@case [$doc:expr] $self:ident [$zero:expr] $field:ident() Option < DateTime < Utc >> { $($body:tt)+ }) => {
+    (@case [$doc:expr] $self:ident [$zero:expr] $field:ident() Option < Timestamp > { $($body:tt)+ }) => {
         #[doc = $doc]
-        fn $field(&$self) -> Option<DateTime<Utc>> {
+        fn $field(&$self) -> Option<Timestamp> {
             $($body)+
         }
     };
@@ -575,9 +575,9 @@ macro_rules! field_getters {
             $($body)+
         }
     };
-    (@case [$doc:expr] $self:ident [$zero:expr] $field:ident() DateTime < Utc >) => {
+    (@case [$doc:expr] $self:ident [$zero:expr] $field:ident() Timestamp) => {
         #[doc = $doc]
-        fn $field(&$self) -> DateTime<Utc> {
+        fn $field(&$self) -> Timestamp {
             $zero.$field()
         }
     };

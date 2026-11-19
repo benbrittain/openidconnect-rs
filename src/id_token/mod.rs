@@ -1,4 +1,4 @@
-use crate::helpers::{deserialize_string_or_vec, FilteredFlatten, Timestamp};
+use crate::helpers::{deserialize_string_or_vec, FilteredFlatten, JsonTimestamp};
 use crate::jwt::JsonWebTokenAccess;
 use crate::jwt::{JsonWebTokenError, JsonWebTokenJsonPayloadSerde};
 use crate::types::jwk::JwsSigningAlgorithm;
@@ -14,7 +14,7 @@ use crate::{
     StandardClaims, SubjectIdentifier,
 };
 
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use serde_with::{serde_as, skip_serializing_none};
@@ -213,14 +213,14 @@ where
         deserialize_with = "deserialize_string_or_vec"
     )]
     audiences: Vec<Audience>,
-    #[serde_as(as = "Timestamp")]
+    #[serde_as(as = "JsonTimestamp")]
     #[serde(rename = "exp")]
-    expiration: DateTime<Utc>,
-    #[serde_as(as = "Timestamp")]
+    expiration: Timestamp,
+    #[serde_as(as = "JsonTimestamp")]
     #[serde(rename = "iat")]
-    issue_time: DateTime<Utc>,
-    #[serde_as(as = "Option<Timestamp>")]
-    auth_time: Option<DateTime<Utc>>,
+    issue_time: Timestamp,
+    #[serde_as(as = "Option<JsonTimestamp>")]
+    auth_time: Option<Timestamp>,
     nonce: Option<Nonce>,
     #[serde(rename = "acr")]
     auth_context_ref: Option<AuthenticationContextClass>,
@@ -250,8 +250,8 @@ where
     pub fn new(
         issuer: IssuerUrl,
         audiences: Vec<Audience>,
-        expiration: DateTime<Utc>,
-        issue_time: DateTime<Utc>,
+        expiration: Timestamp,
+        issue_time: Timestamp,
         standard_claims: StandardClaims<GC>,
         additional_claims: AC,
     ) -> Self {
@@ -276,9 +276,9 @@ where
         pub self [self] ["claim"] {
             set_issuer -> issuer[IssuerUrl] ["iss"],
             set_audiences -> audiences[Vec<Audience>] ["aud"],
-            set_expiration -> expiration[DateTime<Utc>] ["exp"],
-            set_issue_time -> issue_time[DateTime<Utc>] ["iat"],
-            set_auth_time -> auth_time[Option<DateTime<Utc>>],
+            set_expiration -> expiration[Timestamp] ["exp"],
+            set_issue_time -> issue_time[Timestamp] ["iat"],
+            set_auth_time -> auth_time[Option<Timestamp>],
             set_nonce -> nonce[Option<Nonce>],
             set_auth_context_ref -> auth_context_ref[Option<AuthenticationContextClass>] ["acr"],
             set_auth_method_refs -> auth_method_refs[Option<Vec<AuthenticationMethodReference>>] ["amr"],
@@ -321,7 +321,7 @@ where
             set_phone_number -> phone_number[Option<EndUserPhoneNumber>],
             set_phone_number_verified -> phone_number_verified[Option<bool>],
             set_address -> address[Option<AddressClaim>],
-            set_updated_at -> updated_at[Option<DateTime<Utc>>],
+            set_updated_at -> updated_at[Option<Timestamp>],
         }
     ];
 

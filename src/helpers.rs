@@ -1,7 +1,7 @@
 use crate::types::localized::join_language_tag_key;
 use crate::{LanguageTag, LocalizedClaim};
 
-use chrono::{DateTime, TimeZone, Utc};
+use jiff::Timestamp;
 use serde::de::value::MapDeserializer;
 use serde::de::{DeserializeOwned, Deserializer, Error, MapAccess, Visitor};
 use serde::{Deserialize, Serialize, Serializer};
@@ -407,60 +407,63 @@ impl Display for Boolean {
 /// Timestamp as seconds since the unix epoch, or optionally an ISO 8601 string.
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(untagged)]
-pub(crate) enum Timestamp {
+pub(crate) enum JsonTimestamp {
     Seconds(serde_json::Number),
     #[cfg(feature = "accept-rfc3339-timestamps")]
     Rfc3339(String),
 }
-impl Timestamp {
+impl JsonTimestamp {
     // The spec is ambiguous about whether seconds should be expressed as integers, or
     // whether floating-point values are allowed. For compatibility with a wide range of
     // clients, we round down to the nearest second.
-    pub(crate) fn from_utc(utc: &DateTime<Utc>) -> Self {
-        Timestamp::Seconds(utc.timestamp().into())
+    pub(crate) fn from_timestamp(timestamp: &Timestamp) -> Self {
+        let secs = timestamp.as_second();
+        let secs = if timestamp.subsec_nanosecond() < 0 {
+            secs - 1
+        } else {
+            secs
+        };
+        JsonTimestamp::Seconds(secs.into())
     }
 
-    pub(crate) fn to_utc(&self) -> Result<DateTime<Utc>, ()> {
+    pub(crate) fn to_timestamp(&self) -> Result<Timestamp, ()> {
         match self {
-            Timestamp::Seconds(seconds) => {
+            JsonTimestamp::Seconds(seconds) => {
                 let (secs, nsecs) = if seconds.is_i64() {
-                    (seconds.as_i64().ok_or(())?, 0u32)
+                    (seconds.as_i64().ok_or(())?, 0i32)
                 } else {
                     let secs_f64 = seconds.as_f64().ok_or(())?;
                     let secs = secs_f64.floor();
                     (
                         secs as i64,
-                        ((secs_f64 - secs) * 1_000_000_000.).floor() as u32,
+                        ((secs_f64 - secs) * 1_000_000_000.).floor() as i32,
                     )
                 };
-                Utc.timestamp_opt(secs, nsecs).single().ok_or(())
+                Timestamp::new(secs, nsecs).map_err(|_| ())
             }
             #[cfg(feature = "accept-rfc3339-timestamps")]
-            Timestamp::Rfc3339(iso) => {
-                let datetime = DateTime::parse_from_rfc3339(iso).map_err(|_| ())?;
-                Ok(datetime.into())
-            }
+            JsonTimestamp::Rfc3339(iso) => iso.parse().map_err(|_| ()),
         }
     }
 }
 
-impl Display for Timestamp {
+impl Display for JsonTimestamp {
     fn fmt(&self, f: &mut Formatter) -> Result<(), std::fmt::Error> {
         match self {
-            Timestamp::Seconds(seconds) => Display::fmt(seconds, f),
+            JsonTimestamp::Seconds(seconds) => Display::fmt(seconds, f),
             #[cfg(feature = "accept-rfc3339-timestamps")]
-            Timestamp::Rfc3339(iso) => Display::fmt(iso, f),
+            JsonTimestamp::Rfc3339(iso) => Display::fmt(iso, f),
         }
     }
 }
 
-impl<'de> DeserializeAs<'de, DateTime<Utc>> for Timestamp {
-    fn deserialize_as<D>(deserializer: D) -> Result<DateTime<Utc>, D::Error>
+impl<'de> DeserializeAs<'de, Timestamp> for JsonTimestamp {
+    fn deserialize_as<D>(deserializer: D) -> Result<Timestamp, D::Error>
     where
         D: Deserializer<'de>,
     {
-        let seconds: Timestamp = Deserialize::deserialize(deserializer)?;
-        seconds.to_utc().map_err(|_| {
+        let seconds: JsonTimestamp = Deserialize::deserialize(deserializer)?;
+        seconds.to_timestamp().map_err(|_| {
             serde::de::Error::custom(format!(
                 "failed to parse `{seconds}` as UTC datetime (in seconds)"
             ))
@@ -468,12 +471,12 @@ impl<'de> DeserializeAs<'de, DateTime<Utc>> for Timestamp {
     }
 }
 
-impl SerializeAs<DateTime<Utc>> for Timestamp {
-    fn serialize_as<S>(source: &DateTime<Utc>, serializer: S) -> Result<S::Ok, S::Error>
+impl SerializeAs<Timestamp> for JsonTimestamp {
+    fn serialize_as<S>(source: &Timestamp, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        Timestamp::from_utc(source).serialize(serializer)
+        JsonTimestamp::from_timestamp(source).serialize(serializer)
     }
 }
 
@@ -516,5 +519,53 @@ mod serde_base64url_byte_array {
     {
         let base64_encoded = BASE64_URL_SAFE_NO_PAD.encode(v);
         serializer.serialize_str(&base64_encoded)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::JsonTimestamp;
+
+    use jiff::Timestamp;
+
+    fn parse(json: &str) -> Timestamp {
+        serde_json::from_str::<JsonTimestamp>(json)
+            .unwrap()
+            .to_timestamp()
+            .unwrap()
+    }
+
+    fn serialize(timestamp: Timestamp) -> String {
+        serde_json::to_string(&JsonTimestamp::from_timestamp(&timestamp)).unwrap()
+    }
+
+    #[test]
+    fn test_timestamp_fractional_seconds() {
+        assert_eq!(parse("1.5"), Timestamp::new(1, 500_000_000).unwrap());
+        assert_eq!(parse("-1.5"), Timestamp::new(-2, 500_000_000).unwrap());
+    }
+
+    #[test]
+    fn test_timestamp_serializes_floored_seconds() {
+        assert_eq!(serialize(Timestamp::new(1, 999_999_999).unwrap()), "1");
+        assert_eq!(serialize(Timestamp::new(-1, -500_000_000).unwrap()), "-2");
+        assert_eq!(serialize(Timestamp::new(-1, 0).unwrap()), "-1");
+    }
+
+    #[test]
+    fn test_timestamp_out_of_range() {
+        assert!(serde_json::from_str::<JsonTimestamp>("1e20")
+            .unwrap()
+            .to_timestamp()
+            .is_err());
+    }
+
+    #[cfg(feature = "accept-rfc3339-timestamps")]
+    #[test]
+    fn test_timestamp_rfc3339() {
+        assert_eq!(
+            parse("\"2018-12-16T02:29:08+01:00\""),
+            Timestamp::from_second(1544923748).unwrap()
+        );
     }
 }

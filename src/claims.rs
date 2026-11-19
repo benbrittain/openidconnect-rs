@@ -1,4 +1,4 @@
-use crate::helpers::{Boolean, DeserializeMapField, FlattenFilter, Timestamp};
+use crate::helpers::{Boolean, DeserializeMapField, FlattenFilter, JsonTimestamp};
 use crate::types::localized::split_language_tag_key;
 use crate::{
     AddressCountry, AddressLocality, AddressPostalCode, AddressRegion, EndUserBirthday,
@@ -8,7 +8,7 @@ use crate::{
     StreetAddress, SubjectIdentifier,
 };
 
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde::de::{DeserializeOwned, Deserializer, MapAccess, Visitor};
 use serde::ser::SerializeMap;
 use serde::{Deserialize, Serialize, Serializer};
@@ -84,7 +84,7 @@ where
     pub(crate) phone_number: Option<EndUserPhoneNumber>,
     pub(crate) phone_number_verified: Option<bool>,
     pub(crate) address: Option<AddressClaim>,
-    pub(crate) updated_at: Option<DateTime<Utc>>,
+    pub(crate) updated_at: Option<Timestamp>,
 }
 impl<GC> StandardClaims<GC>
 where
@@ -153,7 +153,7 @@ where
             set_phone_number -> phone_number[Option<EndUserPhoneNumber>],
             set_phone_number_verified -> phone_number_verified[Option<bool>],
             set_address -> address[Option<AddressClaim>],
-            set_updated_at -> updated_at[Option<DateTime<Utc>>],
+            set_updated_at -> updated_at[Option<Timestamp>],
         }
     ];
 }
@@ -294,7 +294,9 @@ where
                             field_case!(phone_number_verified, Option<Boolean>, language_tag)
                         }
                         "address" => field_case!(address, Option<_>, language_tag),
-                        "updated_at" => field_case!(updated_at, Option<Timestamp>, language_tag),
+                        "updated_at" => {
+                            field_case!(updated_at, Option<JsonTimestamp>, language_tag)
+                        }
                         // Ignore unknown fields.
                         _ => {
                             map.next_value::<serde::de::IgnoredAny>()?;
@@ -327,7 +329,7 @@ where
                     updated_at: updated_at
                         .flatten()
                         .map(|sec| {
-                            sec.to_utc().map_err(|_| {
+                            sec.to_timestamp().map_err(|_| {
                                 serde::de::Error::custom(format!(
                                     "failed to parse `{sec}` as UTC datetime (in seconds) for key \
                                      `updated_at`"
@@ -372,7 +374,7 @@ where
                 [Option(phone_number)]
                 [Option(phone_number_verified)]
                 [Option(address)]
-                [Option(DateTime(Seconds(updated_at)))]
+                [Option(Timestamp(Seconds(updated_at)))]
             }
         }
     }

@@ -42,12 +42,7 @@ required-features = ["reqwest-blocking"]
 
 [dependencies]
 base64 = "0.22"
-# Disable 'time' dependency since it triggers RUSTSEC-2020-0071 and we don't need it.
-chrono = { version = "0.4", default-features = false, features = [
-    "clock",
-    "std",
-    "wasmbind"
-] }
+jiff = { version = "1", default-features = false, features = ["js", "std"] }
 thiserror = "1.0"
 http = "1.0"
 itertools = "0.14"
@@ -81,3 +76,6 @@ pretty_assertions = "1.0"
 reqwest = { version = "0.12", features = ["blocking", "rustls-tls"], default-features = false }
 retry = "1.0"
 anyhow = "1.0"
+
+[patch.crates-io]
+oauth2 = { git = "https://github.com/avsaase/oauth2-rs", rev = "e58e7c2" }

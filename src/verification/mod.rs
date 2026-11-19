@@ -7,7 +7,7 @@ use crate::{
     JwsSigningAlgorithm, Nonce, SubjectIdentifier,
 };
 
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use sha2::{Digest, Sha256};
@@ -528,11 +528,10 @@ where
     acr_verifier_fn:
         Arc<dyn Fn(Option<&AuthenticationContextClass>) -> Result<(), String> + 'a + Send + Sync>,
     #[allow(clippy::type_complexity)]
-    auth_time_verifier_fn:
-        Arc<dyn Fn(Option<DateTime<Utc>>) -> Result<(), String> + 'a + Send + Sync>,
-    iat_verifier_fn: Arc<dyn Fn(DateTime<Utc>) -> Result<(), String> + 'a + Send + Sync>,
+    auth_time_verifier_fn: Arc<dyn Fn(Option<Timestamp>) -> Result<(), String> + 'a + Send + Sync>,
+    iat_verifier_fn: Arc<dyn Fn(Timestamp) -> Result<(), String> + 'a + Send + Sync>,
     pub(crate) jwt_verifier: JwtClaimsVerifier<'a, K>,
-    time_fn: Arc<dyn Fn() -> DateTime<Utc> + 'a + Send + Sync>,
+    time_fn: Arc<dyn Fn() -> Timestamp + 'a + Send + Sync>,
 }
 impl<'a, K> IdTokenVerifier<'a, K>
 where
@@ -547,7 +546,7 @@ where
             iat_verifier_fn: Arc::new(|_| Ok(())),
             jwt_verifier,
             // By default, use the current system time.
-            time_fn: Arc::new(Utc::now),
+            time_fn: Arc::new(Timestamp::now),
         }
     }
 
@@ -642,7 +641,7 @@ where
     /// otherwise.
     pub fn set_auth_time_verifier_fn<T>(mut self, auth_time_verifier_fn: T) -> Self
     where
-        T: Fn(Option<DateTime<Utc>>) -> Result<(), String> + 'a + Send + Sync,
+        T: Fn(Option<Timestamp>) -> Result<(), String> + 'a + Send + Sync,
     {
         self.auth_time_verifier_fn = Arc::new(auth_time_verifier_fn);
         self
@@ -686,7 +685,7 @@ where
     /// This function is used for verifying the ID token expiration time.
     pub fn set_time_fn<T>(mut self, time_fn: T) -> Self
     where
-        T: Fn() -> DateTime<Utc> + 'a + Send + Sync,
+        T: Fn() -> Timestamp + 'a + Send + Sync,
     {
         self.time_fn = Arc::new(time_fn);
         self
@@ -698,7 +697,7 @@ where
     /// otherwise.
     pub fn set_issue_time_verifier_fn<T>(mut self, iat_verifier_fn: T) -> Self
     where
-        T: Fn(DateTime<Utc>) -> Result<(), String> + 'a + Send + Sync,
+        T: Fn(Timestamp) -> Result<(), String> + 'a + Send + Sync,
     {
         self.iat_verifier_fn = Arc::new(iat_verifier_fn);
         self
